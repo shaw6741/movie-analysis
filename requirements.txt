@@ -1,0 +1,6 @@
+requests
+json
+pandas
+tqdm
+logging
+beautifulsoup4
