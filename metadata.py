@@ -39,7 +39,8 @@ class MovieMetadata:
         director = header_section.find('span').text.strip() if header_section.find('span') else None
 
         desc = self.soup.find('div', class_='review body-text -prose -hero prettify')
-        desc = desc.find('div').text.strip() if desc else None
+        desc = desc.find('div') if desc else None
+        desc = desc.text.strip() if desc else None
 
         return title, year, director, desc
 
@@ -47,7 +48,10 @@ class MovieMetadata:
         cast = self.soup.find('div', class_='cast-list text-sluglist')
         if cast != None:
             cast = cast.find_all('a', class_='text-slug tooltip')
-            cast = [ppl.text.strip() for ppl in cast]
+            if len(cast) == 0:
+                cast = None
+            else:
+                cast = [ppl.text.strip() for ppl in cast]
         else:
             cast = None
         return cast
@@ -101,13 +105,16 @@ class MovieMetadata:
         return genres_dic
 
     def get_footer(self):
-        footer = self.soup.find('p', class_='text-link text-footer')
-        run_time = footer.text.strip().split('\xa0')[0] # in minutes
-        imdb = footer.find('a', attrs={"data-track-action": "IMDb"})
-        tmdb = footer.find('a', attrs={"data-track-action": "TMDb"})
-        imdb = imdb['href'].split('/')[4] if imdb else None
-        tmdb = tmdb['href'].split('/')[4] if tmdb else None
-        return run_time, imdb, tmdb
+        try:
+            footer = self.soup.find('p', class_='text-link text-footer')
+            run_time = footer.text.strip().split('\xa0')[0] # in minutes
+            imdb = footer.find('a', attrs={"data-track-action": "IMDb"})
+            tmdb = footer.find('a', attrs={"data-track-action": "TMDb"})
+            imdb = imdb['href'].split('/')[4] if imdb else None
+            tmdb = tmdb['href'].split('/')[4] if tmdb else None
+            return run_time, imdb, tmdb
+        except:
+            return None, None, None
 
     def get_stats(self):
         #movie = self.url.split('/')[-2]
@@ -150,65 +157,48 @@ class MovieMetadata:
         return poster_link
 
     def combine_all(self):
-        title, year, director, desc = self.get_header_desc()
-        cast, crew_dic = self.get_cast(), self.get_crew()
-        details_dic, genres_dic = self.get_details(), self.get_genres()
-        run_time, imdb_id, tmdb_id = self.get_footer()
-        watched_by, listed_by, liked_by = self.get_stats()
-        rating, rated_by = self.get_rate()
-        poster_link = self.get_poster_link()
-
-        def convert_to_number(value):
-            if value != None:
-                try:
-                    number = float(value)
-                    return number
-                except ValueError:
-                    return None
-            else:
-                return None
-
-        meta_dic = {
-            'title': title,
-            'year': convert_to_number(year),
-            'director': director, 'desc': desc,
-            'cast': cast}
-        if crew_dic != None:
-            meta_dic.update(crew_dic)
-        if details_dic != None:
-            meta_dic.update(details_dic)
-        if genres_dic != None:
-            meta_dic.update(genres_dic)
-        meta_dic.update({
-            'runtime': convert_to_number(run_time),
-            'imdb_id': imdb_id,
-            'tmdb_id': tmdb_id,
-            'watched_by': watched_by,
-            'listed_by': listed_by,
-            'liked_by': liked_by,
-            'rating': convert_to_number(rating),
-            'rated_by': convert_to_number(rated_by),
-            'poster': poster_link}
-        )
-        return meta_dic
-
-headers = {
-                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36',
-                'referer': 'https://google.com',
-            }
-
-def get_soup(url_short):
-    movie = url_short.split('/')[-2]
-    url = 'https://letterboxd.com/film/{}/'.format(movie)
-    page = ''
-    while page == '':
         try:
-            r = requests.get(url, verify = False, headers = headers)
-            break
+            title, year, director, desc = self.get_header_desc()
+            cast, crew_dic = self.get_cast(), self.get_crew()
+            details_dic, genres_dic = self.get_details(), self.get_genres()
+            run_time, imdb_id, tmdb_id = self.get_footer()
+            watched_by, listed_by, liked_by = self.get_stats()
+            rating, rated_by = self.get_rate()
+            poster_link = self.get_poster_link()
+
+            def convert_to_number(value):
+                if value != None:
+                    try:
+                        number = float(value)
+                        return number
+                    except ValueError:
+                        return None
+                else:
+                    return None
+
+            meta_dic = {
+                'title': title,
+                'year': convert_to_number(year),
+                'director': director, 'desc': desc,
+                'cast': cast}
+            if crew_dic != None:
+                meta_dic.update(crew_dic)
+            if details_dic != None:
+                meta_dic.update(details_dic)
+            if genres_dic != None:
+                meta_dic.update(genres_dic)
+            meta_dic.update({
+                'runtime': convert_to_number(run_time),
+                'imdb_id': imdb_id,
+                'tmdb_id': tmdb_id,
+                'watched_by': watched_by,
+                'listed_by': listed_by,
+                'liked_by': liked_by,
+                'rating': convert_to_number(rating),
+                'rated_by': convert_to_number(rated_by),
+                'poster': poster_link}
+            )
         except:
-            print("Connection refused by the server..")
-            time.sleep(2)
-            continue
-        
-    soup = BeautifulSoup(r.content, 'html.parser')
-    return movie, url, soup
+            meta_dic = None
+            print(self.movie, 'error')
+        return meta_dic
