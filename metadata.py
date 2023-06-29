@@ -1,4 +1,7 @@
-import requests, time, re
+import requests, time, re, json
+import numpy as np
+import pandas as pd
+from tqdm import tqdm
 from bs4 import BeautifulSoup
 # Disable chardet debug messages
 import logging
@@ -238,3 +241,80 @@ class movieReview():
                 return 0
         else:
             return 0
+            
+
+class reviewLink():
+    def __init__(self, movie, page):
+        # movie = kr['film'][0],  page = 1,2,3...
+        self.movie = movie
+        self.page = page
+        self.url = f'https://letterboxd.com{self.movie}reviews/by/added-earliest/page/{self.page}/'
+        self.soup = self.get_review_soup()
+
+    def get_review_soup(self):
+        page = ''
+        while page =='':
+            try:
+                r = requests.get(self.url, verify=False)
+                break
+            except:
+                print('sleep...')
+                time.sleep(2)
+                continue
+        soup = BeautifulSoup(r.content, 'html.parser')
+        return soup
+
+    def get_review(self):
+        reviews_lst = self.soup.find_all('li',class_='film-detail')
+        reviews_page_lst = []
+        for item in reviews_lst:
+            attri = item.find('p',class_='attribution')
+            if attri:
+                rate_date = {}
+                for child in attri.children:
+                    if child.name == 'span':
+                        if child['class'][0] != 'rating':
+                            date = child.find('span',class_='_nobr')
+                            review_link = child.find('a', class_='context')
+                            rate_date['date'] = date.text.strip() if date else None
+                            rate_date['review_link'] = review_link['href'] if review_link else None
+                        elif 'rating' in child['class']:
+                            rate_date['rating'] = child['class'][-1].split('-')[-1]
+
+            else:
+                rate_date = None
+            
+            reviews_page_lst.append(rate_date)
+        return reviews_page_lst
+        
+        
+class reviewContent():
+    def __init__(self, link):
+        self.url = f'https://letterboxd.com{link}'
+        self.soup = self.get_review_content_soup()
+
+    def get_review_content_soup(self):
+        page = ''
+        while page =='':
+            try:
+                r = requests.get(self.url, verify=False)
+                break
+            except:
+                print('sleep...')
+                time.sleep(2)
+                continue
+        soup = BeautifulSoup(r.content, 'html.parser')
+        return soup
+
+    def get_review_content(self):
+        scripts = self.soup.find('script', type='application/ld+json')
+        pattern = re.compile(r'\{.*\}', re.DOTALL)
+        match = pattern.search(scripts.string)
+        if match:
+            json_data = match.group()
+            data = json.loads(json_data)
+            content = data.get('reviewBody')
+        else:
+            print("No JSON data found.")
+            content = None
+        return content
