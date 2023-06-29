@@ -265,27 +265,31 @@ class reviewLink():
         return soup
 
     def get_review(self):
-        reviews_lst = self.soup.find_all('li',class_='film-detail')
-        reviews_page_lst = []
-        for item in reviews_lst:
-            attri = item.find('p',class_='attribution')
-            if attri:
-                rate_date = {}
-                for child in attri.children:
-                    if child.name == 'span':
-                        if child['class'][0] != 'rating':
-                            date = child.find('span',class_='_nobr')
-                            review_link = child.find('a', class_='context')
-                            rate_date['date'] = date.text.strip() if date else None
-                            rate_date['review_link'] = review_link['href'] if review_link else None
-                        elif 'rating' in child['class']:
-                            rate_date['rating'] = child['class'][-1].split('-')[-1]
+        try:
+            reviews_lst = self.soup.find_all('li',class_='film-detail')
+            reviews_page_lst = []
+            for item in reviews_lst:
+                attri = item.find('p',class_='attribution')
+                if attri:
+                    rate_date = {}
+                    for child in attri.children:
+                        if child.name == 'span':
+                            if child['class'][0] != 'rating':
+                                date = child.find('span',class_='_nobr')
+                                review_link = child.find('a', class_='context')
+                                rate_date['date'] = date.text.strip() if date else None
+                                rate_date['review_link'] = review_link['href'] if review_link else None
+                            elif 'rating' in child['class']:
+                                rate_date['rating'] = child['class'][-1].split('-')[-1]
 
-            else:
-                rate_date = None
-            
-            reviews_page_lst.append(rate_date)
-        return reviews_page_lst
+                else:
+                    rate_date = None
+                
+                reviews_page_lst.append(rate_date)
+                return reviews_page_lst
+        except:
+            return None
+        
         
         
 class reviewContent():
@@ -307,14 +311,17 @@ class reviewContent():
         return soup
 
     def get_review_content(self):
-        scripts = self.soup.find('script', type='application/ld+json')
-        pattern = re.compile(r'\{.*\}', re.DOTALL)
-        match = pattern.search(scripts.string)
-        if match:
-            json_data = match.group()
-            data = json.loads(json_data)
-            content = data.get('reviewBody')
-        else:
-            print("No JSON data found.")
-            content = None
-        return content
+        try:
+            scripts = self.soup.find('script', type='application/ld+json')
+            pattern = re.compile(r'\{.*\}', re.DOTALL)
+            match = pattern.search(scripts.string)
+            if match:
+                json_data = match.group()
+                data = json.loads(json_data)
+                content = data.get('reviewBody')
+            else:
+                print("No JSON data found.")
+                content = None
+            return content
+        except:
+            return None
