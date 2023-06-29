@@ -202,3 +202,39 @@ class MovieMetadata:
             meta_dic = None
             print(self.movie, 'error')
         return meta_dic
+    
+    
+class movieReview():
+    def __init__(self, url):
+        self.movie = url.split('/')[2]
+        self.url = 'https://letterboxd.com/film/{}/reviews/'.format(self.movie)
+        self.headers = {
+                'user-agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/80.0.3987.163 Safari/537.36',
+                'referer': 'https://google.com',
+            }
+        self.soup = self.get_soup()
+        
+    def get_soup(self):
+        page = ''
+        while page == '':
+            try:
+                r = requests.get(self.url, verify = False, headers = self.headers)
+                break
+            except:
+                print('Sleep...')
+                time.sleep(5)
+                continue
+        soup = BeautifulSoup(r.content, 'html.parser')
+        return soup
+    
+    def get_num_reviews(self):
+        num_reviews_element = self.soup.find('a', href='/film/{}/reviews/'.format(self.movie))
+        if num_reviews_element:
+            try:
+                num_reviews = num_reviews_element['title'].split('\xa0')[0]
+                num_reviews = int(re.sub(',','',num_reviews))
+                return num_reviews
+            except:
+                return 0
+        else:
+            return 0
