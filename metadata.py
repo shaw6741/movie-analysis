@@ -248,7 +248,7 @@ class reviewLink():
         # movie = kr['film'][0],  page = 1,2,3...
         self.movie = movie
         self.page = page
-        self.url = f'https://letterboxd.com{self.movie}reviews/by/added-earliest/page/{self.page}/'
+        self.url = f'https://letterboxd.com{self.movie}reviews/by/activity/page/{self.page}/'
         self.soup = self.get_review_soup()
 
     def get_review_soup(self):
@@ -266,31 +266,36 @@ class reviewLink():
 
     def get_review(self):
         try:
-            reviews_lst = self.soup.find_all('li',class_='film-detail')
-            reviews_page_lst = []
+            reviews_lst = self.soup.find_all('p',class_='attribution')
+            each_page_lst = []
             for item in reviews_lst:
-                attri = item.find('p',class_='attribution')
-                if attri:
-                    rate_date = {}
-                    for child in attri.children:
-                        if child.name == 'span':
-                            if child['class'][0] != 'rating':
-                                date = child.find('span',class_='_nobr')
-                                review_link = child.find('a', class_='context')
-                                rate_date['date'] = date.text.strip() if date else None
-                                rate_date['review_link'] = review_link['href'] if review_link else None
-                            elif 'rating' in child['class']:
-                                rate_date['rating'] = child['class'][-1].split('-')[-1]
-
-                else:
-                    rate_date = None
-                
-                reviews_page_lst.append(rate_date)
-                return reviews_page_lst
+                rate_dic = {}
+                for child in item.children:
+                    if child.name == 'span' and 'rating' in child['class']:
+                        rate_dic['rating'] = child['class'][-1].split('-')[-1]
+                    elif child.name == 'span' and 'content-metadata' in child['class']:
+                        link = child.find('a', class_='context')
+                        date = child.find('span', class_='_nobr')
+                        rate_dic['link'] = link['href'] if link else None
+                        rate_dic['date'] = date.text.strip() if date else None
+                each_page_lst.append(rate_dic)
+            return each_page_lst
         except:
             return None
         
+def get_all_reviews(row):
+    movie, num = row['film'], row['num_reviews']
+    if num > 3072:
+        pages = 256
+    else:
+        pages = int(num/12+2)
         
+    review_lst = []
+    for page in range(1, pages+1):
+        reviews_page_lst = reviewLink(movie, page).get_review()
+        if reviews_page_lst:
+            review_lst.extend(reviews_page_lst)
+    return review_lst    
         
 class reviewContent():
     def __init__(self, link):
@@ -325,3 +330,4 @@ class reviewContent():
             return content
         except:
             return None
+
